@@ -47,7 +47,7 @@ def wait_for_download(directory, file_pattern, timeout=60, check_interval=5):
 # %%
 ## Read in options file that has log-in info for metabase
 my_opts_filename = (
-    "C:\\Users\\JPHELAN\\Documents\\R_projects\\long_term_projects\\AIS_ZQMussels\\Options.csv"
+    "C:\\Users\\KHACKETT\\Documents\\R_Projects\\Long_Term_Projects\\AIS_IMDP_Figures\\Options.csv"
     #sys.argv[1]
 )
 
