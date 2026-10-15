@@ -1,12 +1,12 @@
 @echo off
 C:
-set "PATH=C:\Users\CMADSEN\AppData\Local\Programs\Python\Python311;%PATH%"
-set "PATH=C:\Program Files\R\R-4.4.1\bin\x64;%PATH%"
-cd C:\Users\CMADSEN\Downloads\LocalR\long_term_projects\ZQMussels
+set "PATH=C:\Users\KHACKETT\AppData\Local\Programs\Python\Python315;%PATH%"
+set "PATH=C:\Users\KHACKETT\AppData\Local\Programs\R\R-4.6.1\bin\x64;%PATH%"
+cd C:\Users\KHACKETT\Documents\R_Projects\Long_Term_Projects\AIS_IMDP_Figures
 
 REM Run Python Script
 python download_annual_metabase_csv.py Options.csv
 
 REM Run the R Script
-Rscript update_imdp_data_automatically.R C:\Users\CMADSEN\Downloads\LocalR\long_term_projects\ZQMussels\Options.csv
+Rscript update_imdp_data_automatically.R C:\Users\KHACKETT\Documents\R_Projects\Long_Term_Projects\AIS_IMDP_Figures\Options.csv
 pause
