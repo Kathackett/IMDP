@@ -330,11 +330,12 @@ source(here::here("02_IMDP_Figure_Generator", "utils", "get_exec_summary.R"))
 # station_labels = station_labels |> 
 #   dplyr::filter(station_name != "Radium")
 
-stations_for_maps <-stations_for_maps |> 
-  mutate(station_type = case_when(
-    station_name == "Cascade" ~ "Part-time Inspection Crew",
-    T ~ station_type
-  ))
+
+
+stations_for_maps = stations_for_maps |> 
+  filter(station_name != "Cascade") 
+station_labels = station_labels |> 
+  filter(station_name != "Cascade")
 
 source(here::here("02_IMDP_Figure_Generator", "utils", "get_basemaps.R"))
 
@@ -652,7 +653,11 @@ dat |>
 
 ```{r fig3_total_boats_by_station}
 
-
+stations_for_maps <-stations_for_maps |> 
+  mutate(station_type = case_when(
+    station_name == "Cascade" ~ "Part-time Inspection Station",
+    T ~ station_type
+  ))
 
 source(here::here("02_IMDP_Figure_Generator", "utils", "dat_for_charts_and_pies.R"))
 
