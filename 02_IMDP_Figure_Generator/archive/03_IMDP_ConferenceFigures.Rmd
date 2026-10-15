@@ -1,0 +1,488 @@
+---
+title: "IMDP Shoulder Season Analysis"
+author: "Chris Madsen"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+pacman::p_load(
+readxl,
+ggpubr,
+ggrepel,
+ggExtra,
+tidyverse,
+sf,
+RColorBrewer,
+openxlsx,
+scales,
+lubridate,
+plotrix)
+
+#=====================================================
+#                       OPTIONS 
+#=====================================================
+my_opts = read_csv(paste0(str_extract(getwd(),".*ZQMussels/"),"Options.csv"))
+
+#Which year should we focus on?
+my.year = my_opts$year
+
+#Update GIS maps? We probably want this turned on unless you are making fine adjustments to some figures.
+update.gis = TRUE
+
+#Are there any stations we would like to exclude from the excel-type figures?
+#In 2021, we will exclude:
+stations.to.include = c("Golden","Radium","Olsen","Yahk",
+                        "Pacific","Osoyoos","Hwy 97c","Mt. Robson",
+                        "Keremeos","Greenwood","Dawson Creek","Kaleden")
+
+stations.to.put.aside = c("Scheduled Inspection","Boat Launch - Okanagan",
+                          "Okanagan",
+                          "Penticton Roving - Hwy 33", 
+                          "Penticton Roving - Inspection Event")
+
+#Data folders
+my.data.folder = paste0(my_opts$zqm_figure_local_folder,"data/")
+my.external.data.folder = paste0(my_opts$remote_spatial_data,"Projects/ZQMussels/data/")
+
+#Which folder should we put specific output files in?
+my.output.folder = paste0(my_opts$zqm_figure_local_folder,"output/")
+if(!dir.exists(my.output.folder)) dir.create(my.output.folder)
+
+my.external.output.folder = paste0(my_opts$zqm_figure_output_remote_folder,my_opts$year)
+zqm.operations.folder = my_opts$zqm_operations_data_folder
+this.years.report.folder = paste0(my_opts$remote_spatial_data,"Projects/ZQMussels/",my.year," IMDP Final Report/")
+
+#Where is the mussel-fouled tracking sheet?
+MusselFouledTracker = paste0(my_opts$zqm_operations_data_folder,"Watercraft Inspection Data/", my.year," data/2022 mussel fouled boats tracking sheet.xlsx")
+
+#What is the sheet name of the destination regions for the mussel fouled tracking sheet?
+MF_tracker_sheet = "DestRegions"
+
+#Where can we find the CBSA notifications excel sheet for this year?
+if(file.exists(paste0(my.external.output.folder,"/GIS Maps and Excel Figures/",my.year," COS inbox notifications.xlsx"))){
+  cbsa_dat = read_excel(paste0(my.external.output.folder,"/GIS Maps and Excel Figures/",my.year," COS inbox notifications.xlsx"),
+                 sheet = "Filtered list")
+}
+
+
+#If there is no folder for excel figures for the target year in the I: drive, make it now.
+if(!dir.exists(paste0(my.external.output.folder,"/GIS Maps and Excel Figures/ExcelFigures"))){
+  dir.create(paste0(my.external.output.folder,"/GIS Maps and Excel Figures/ExcelFigures/"))
+}
+
+#These lines below set options for all of the code for the rest of this script. You probably don't need to change any of these.
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(fig.width = 10)
+knitr::opts_chunk$set(fig.height = 6)
+knitr::opts_knit$set(root.dir = paste0(my.external.output.folder,"/GIS Maps and Excel Figures/ExcelFigures"))
+
+#Colour for some of the figures:
+my.grey = "#5f6a6f"
+
+#=====================================================
+#                     END OF OPTIONS
+#=====================================================
+```
+
+```{r load in data}
+setwd(my.data.folder)
+
+dat = read.xlsx('figure_dat.xlsx') %>% 
+  mutate(TimeOfInspection = convertToDateTime(TimeOfInspection)) %>% 
+  as_tibble()
+
+dat_all = read.xlsx('figure_dat_all.xlsx') %>%
+  mutate(TimeOfInspection = openxlsx::convertToDateTime(TimeOfInspection)) %>% 
+  as_tibble()
+
+dat_hr = read.xlsx('figure_dat_hr.xlsx') %>% 
+  mutate(TimeOfInspection = openxlsx::convertToDateTime(TimeOfInspection)) %>% 
+  as_tibble()
+
+dat_mf = read.xlsx('figure_dat_mf.xlsx') %>%
+  mutate(TimeOfInspection = openxlsx::convertToDateTime(TimeOfInspection)) %>% 
+  as_tibble()
+
+flnro_lookup = read_excel(paste0(my.external.data.folder,"waterbody_name_flrno_region_lookup_table.xlsx")) %>% distinct()
+
+abbrev = read_excel(paste0(my.external.data.folder,"Province_States_Abbreviation_Table.xlsx"))
+
+#Lookup table for what the Previous Knowledge of AIS field's codes mean.
+ais_know = read_excel(paste0(my.external.data.folder,"Previous_Knowledge_of_AIS_lookup_table.xlsx"))
+```
+
+## Shoulder-Season Station Operation (before April or after October) - was it effective?
+
+```{r}
+shoulder_data = dat_all %>% 
+  filter(! Year %in% c(2019,2020)) %>% 
+  mutate(month = month(convertToDateTime(Start_Time))) %>% 
+  filter(month > 10 | month < 4) %>% 
+  mutate(month = month(month,label=T,abbr=F)) %>%
+  filter(!is.na(Station)) %>% 
+  filter(!Station %in% c("Other"))
+```
+
+
+```{r}
+
+### For how many hours did these stations function in the shoulder season?
+
+shoulder_data %>%
+  filter(Year %in% c(2016,2017)) %>% 
+  mutate(Date = convertToDate(Start_Time)) %>% 
+  group_by(Station,Year,month) %>% 
+  summarise(ShiftHours = sum(Shift_hours)) %>%  
+  mutate(TotalShiftHours = sum(ShiftHours)) %>%
+  filter(month != "December") %>% 
+  filter(TotalShiftHours > 15) %>% 
+  group_by(Year,month) %>% 
+  #arrange(desc(TotalShiftHours)) %>% 
+  #mutate(Station = fct_reorder(Station, TotalShiftHours, .desc = T)) %>%
+  ggplot() + 
+  geom_col(aes(x = reorder(Station, desc(TotalShiftHours)), y = TotalShiftHours, fill = month)) + 
+  facet_wrap( ~ Year, scales = "free_x", nrow = 1) + 
+  #scale_x_discrete(labels = scales::label_wrap(10)) + 
+  labs(title = "Shoulder Season Shift Hours by Month and Station",
+       subtitle = "(for stations with at least 16 shift hours)",
+       y = "Number of Shift Hours",
+       x = "Station",
+       fill = "Month") + 
+  theme_bw() + 
+  theme(legend.position = 'bottom',
+        text = element_text(size = 16),
+        axis.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1),
+        panel.grid.minor = element_blank())
+```
+
+
+```{r}
+
+### Total Inspection Outcomes by Year and Month
+
+shoulder_data %>%
+  #mutate(Day = day(convertToDateTime(Start_Time))) %>%
+  mutate(week = week(convertToDateTime(Start_Time))) %>%
+  select(Year,month,week,High_Risk_AIS_Ind,MusselsFound_Ind) %>%
+  group_by(Year,month) %>%
+  add_count(name = "TotalN") %>%
+  mutate(HighRiskN = sum(High_Risk_AIS_Ind),
+         MusselFouledN = sum(MusselsFound_Ind)) %>%
+  mutate(LowRiskN = TotalN - HighRiskN,
+         HighRiskN = HighRiskN - MusselFouledN) %>%
+  ungroup() %>%
+  select(Year,month,TotalN,LowRiskN,HighRiskN,MusselFouledN) %>%
+  pivot_longer(cols = c(LowRiskN, HighRiskN, MusselFouledN)) %>%
+  distinct() %>%
+  mutate(prop_value = value/TotalN) %>%
+  mutate(name = case_when(
+    name == "HighRiskN" ~ "High Risk",
+    name == "LowRiskN" ~ "Low Risk",
+    name == "MusselFouledN" ~ "Mussel Fouled",
+    T ~ name
+  )) %>%
+  mutate(name = factor(name, levels = c("Low Risk","High Risk","Mussel Fouled"))) %>%
+  filter(value > 0) %>% 
+  ggplot() +
+  geom_col(aes(x = month, y = value, fill = name, group = Year),
+           position = position_dodge()) +
+  geom_label(aes(x = month, y = value/2, label = value)) +
+  facet_wrap( ~ Year, scales = "free") +
+  theme_bw() +
+  theme(text = element_text(size = 16),
+        axis.text = element_text(size = 12)) +
+  scale_fill_brewer(palette = "Dark2") +
+  scale_y_continuous(breaks = breaks_pretty(3)) +
+  labs(title = "Number of Shoulder-Season Inspections",
+       subtitle = "by year, month and inspection outcome",
+       fill = "Inspection Year",
+       y = "Number of Inspections",
+       x = "Month")
+```
+
+```{r}
+
+## Split Data by Year and Inspection Type - Golden
+
+shoulder_data %>% 
+  filter(Year %in% c(2016,2017)) %>% 
+  filter(Station %in% c("Golden")) %>% 
+  mutate(High_Risk_AIS_Ind = case_when(
+    High_Risk_AIS_Ind == F ~ "Low Risk",
+    T ~ "High Risk"
+  )) %>% 
+  # mutate(Date = convertToDate(Start_Time)) %>% 
+  # mutate(Day = day(Date)) %>% 
+  group_by(Year,Station,month,High_Risk_AIS_Ind) %>% 
+  count(sort = T, name = "NumberInspections") %>% 
+  ungroup() %>% 
+  #filter(NumberInspections > 4 | High_Risk_AIS_Ind == T) %>% 
+  group_by(Station) %>% 
+  mutate(StationYearTotal = sum(NumberInspections)) %>% 
+  ungroup() %>% 
+  # arrange(desc(StationYearTotal)) %>% 
+  #mutate(Station = fct_reorder(Station,StationYearTotal)) %>% 
+  ggplot() + 
+  geom_col(aes(x = reorder(month,desc(StationYearTotal)), y = NumberInspections, fill = High_Risk_AIS_Ind, group = Year), position = position_dodge()) + 
+  facet_wrap(Station ~ Year, scales = "free") + 
+  scale_x_discrete(labels = scales::label_wrap(10)) + 
+  scale_fill_brewer(palette = 'Dark2', direction = -1) +
+  scale_y_continuous(breaks = breaks_pretty(3)) +
+  labs(title = "Shoulder Season Inspections by Year and Station - Golden",
+       y = "Number of Total Inspections",
+       x = "Station",
+       fill = "Inspection Type") + 
+  theme_bw() + 
+  theme(legend.position = 'bottom',
+        text = element_text(size = 16),
+        axis.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        panel.grid.minor = element_blank())
+```
+
+
+```{r}
+## Split Data by Year and Inspection Type - Yahk
+
+
+shoulder_data %>% 
+  filter(Year %in% c(2016,2017)) %>% 
+  filter(Station %in% c("Yahk")) %>% 
+  mutate(High_Risk_AIS_Ind = case_when(
+    High_Risk_AIS_Ind == F ~ "Low Risk",
+    T ~ "High Risk"
+  )) %>% 
+  # mutate(Date = convertToDate(Start_Time)) %>% 
+  # mutate(Day = day(Date)) %>% 
+  group_by(Year,Station,month,High_Risk_AIS_Ind) %>% 
+  count(sort = T, name = "NumberInspections") %>% 
+  ungroup() %>% 
+  #filter(NumberInspections > 4 | High_Risk_AIS_Ind == T) %>% 
+  group_by(Station) %>% 
+  mutate(StationYearTotal = sum(NumberInspections)) %>% 
+  ungroup() %>% 
+  # arrange(desc(StationYearTotal)) %>% 
+  #mutate(Station = fct_reorder(Station,StationYearTotal)) %>% 
+  ggplot() + 
+  geom_col(aes(x = reorder(month,desc(StationYearTotal)), y = NumberInspections, fill = High_Risk_AIS_Ind, group = Year), position = position_dodge()) + 
+  facet_wrap(Station ~ Year, scales = "free") + 
+  scale_x_discrete(labels = scales::label_wrap(10)) + 
+  scale_fill_brewer(palette = 'Dark2', direction = -1) +
+  scale_y_continuous(breaks = breaks_pretty(3)) +
+  labs(title = "Shoulder Season Inspections by Year and Station - Yahk",
+       y = "Number of Total Inspections",
+       x = "Station",
+       fill = "Inspection Type") + 
+  theme_bw() + 
+  theme(legend.position = 'bottom',
+        text = element_text(size = 16),
+        axis.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        panel.grid.minor = element_blank())
+```
+
+
+```{r}
+
+## Split Data by Year and Inspection Type - Dawson Creek
+
+shoulder_data %>% 
+  filter(Year %in% c(2016,2017)) %>% 
+  filter(Station %in% c("Dawson Creek")) %>% 
+  mutate(High_Risk_AIS_Ind = case_when(
+    High_Risk_AIS_Ind == F ~ "Low Risk",
+    T ~ "High Risk"
+  )) %>% 
+  # mutate(Date = convertToDate(Start_Time)) %>% 
+  # mutate(Day = day(Date)) %>% 
+  group_by(Year,Station,month,High_Risk_AIS_Ind) %>% 
+  count(sort = T, name = "NumberInspections") %>% 
+  ungroup() %>% 
+  #filter(NumberInspections > 4 | High_Risk_AIS_Ind == T) %>% 
+  group_by(Station) %>% 
+  mutate(StationYearTotal = sum(NumberInspections)) %>% 
+  ungroup() %>% 
+  # arrange(desc(StationYearTotal)) %>% 
+  #mutate(Station = fct_reorder(Station,StationYearTotal)) %>% 
+  ggplot() + 
+  geom_col(aes(x = reorder(month,desc(StationYearTotal)), y = NumberInspections, fill = High_Risk_AIS_Ind, group = Year), position = position_dodge()) + 
+  facet_wrap(Station ~ Year, scales = "free") + 
+  scale_x_discrete(labels = scales::label_wrap(10)) + 
+  scale_y_continuous(breaks = breaks_pretty(3)) +
+  scale_fill_brewer(palette = 'Dark2', direction = -1) +
+  labs(title = "Shoulder Season Inspections by Year and Station - Dawson Creek",
+       y = "Number of Total Inspections",
+       x = "Station",
+       fill = "Inspection Type") + 
+  theme_bw() + 
+  theme(legend.position = 'bottom',
+        text = element_text(size = 16),
+        axis.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        panel.grid.minor = element_blank())
+```
+
+
+```{r}
+## Split Data by Year and Inspection Type - Cutts (Hwy 93)
+
+shoulder_data %>% 
+  filter(Year %in% c(2016,2017)) %>% 
+  filter(Station %in% c("Cutts (Hwy 93)")) %>% 
+  mutate(High_Risk_AIS_Ind = case_when(
+    High_Risk_AIS_Ind == F ~ "Low Risk",
+    T ~ "High Risk"
+  )) %>% 
+  # mutate(Date = convertToDate(Start_Time)) %>% 
+  # mutate(Day = day(Date)) %>% 
+  group_by(Year,Station,month,High_Risk_AIS_Ind) %>% 
+  count(sort = T, name = "NumberInspections") %>% 
+  ungroup() %>% 
+  #filter(NumberInspections > 4 | High_Risk_AIS_Ind == T) %>% 
+  group_by(Station) %>% 
+  mutate(StationYearTotal = sum(NumberInspections)) %>% 
+  ungroup() %>% 
+  # arrange(desc(StationYearTotal)) %>% 
+  #mutate(Station = fct_reorder(Station,StationYearTotal)) %>% 
+  ggplot() + 
+  geom_col(aes(x = reorder(month,desc(StationYearTotal)), y = NumberInspections, fill = High_Risk_AIS_Ind, group = Year), position = position_dodge()) + 
+  facet_wrap(Station ~ Year, scales = "free") + 
+  scale_x_discrete(labels = scales::label_wrap(10)) + 
+  scale_y_continuous(breaks = breaks_pretty(3)) +
+  scale_fill_brewer(palette = 'Dark2', direction = -1) +
+  labs(title = "Shoulder Season Inspections by Year and Station - Cutts (Hwy 93)",
+       y = "Number of Total Inspections",
+       x = "Station",
+       fill = "Inspection Type") + 
+  theme_bw() + 
+  theme(legend.position = 'bottom',
+        text = element_text(size = 16),
+        axis.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        panel.grid.minor = element_blank())
+```
+
+
+```{r}
+## Split Data by Year and Inspection Type - Midway
+
+shoulder_data %>% 
+  filter(Year %in% c(2016,2017)) %>% 
+  filter(Station %in% c("Midway")) %>% 
+  mutate(High_Risk_AIS_Ind = case_when(
+    High_Risk_AIS_Ind == F ~ "Low Risk",
+    T ~ "High Risk"
+  )) %>% 
+  # mutate(Date = convertToDate(Start_Time)) %>% 
+  # mutate(Day = day(Date)) %>% 
+  group_by(Year,Station,month,High_Risk_AIS_Ind) %>% 
+  count(sort = T, name = "NumberInspections") %>% 
+  ungroup() %>% 
+  #filter(NumberInspections > 4 | High_Risk_AIS_Ind == T) %>% 
+  group_by(Station) %>% 
+  mutate(StationYearTotal = sum(NumberInspections)) %>% 
+  ungroup() %>% 
+  # arrange(desc(StationYearTotal)) %>% 
+  #mutate(Station = fct_reorder(Station,StationYearTotal)) %>% 
+  ggplot() + 
+  geom_col(aes(x = reorder(month,desc(StationYearTotal)), y = NumberInspections, fill = High_Risk_AIS_Ind, group = Year), position = position_dodge()) + 
+  facet_wrap(Station ~ Year, scales = "free") + 
+  scale_x_discrete(labels = scales::label_wrap(10)) + 
+  scale_y_continuous(breaks = breaks_pretty(3)) +
+  scale_fill_brewer(palette = 'Dark2', direction = -1) +
+  labs(title = "Shoulder Season Inspections by Year and Station - Midway",
+       y = "Number of Total Inspections",
+       x = "Station",
+       fill = "Inspection Type") + 
+  theme_bw() + 
+  theme(legend.position = 'bottom',
+        text = element_text(size = 16),
+        axis.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        panel.grid.minor = element_blank())
+```
+
+
+```{r}
+
+## Split Data by Year and Inspection Type - Mt. Robson
+
+shoulder_data %>% 
+  filter(Year %in% c(2016,2017)) %>% 
+  filter(Station %in% c("Mt. Robson")) %>% 
+  mutate(High_Risk_AIS_Ind = case_when(
+    High_Risk_AIS_Ind == F ~ "Low Risk",
+    T ~ "High Risk"
+  )) %>% 
+  # mutate(Date = convertToDate(Start_Time)) %>% 
+  # mutate(Day = day(Date)) %>% 
+  group_by(Year,Station,month,High_Risk_AIS_Ind) %>% 
+  count(sort = T, name = "NumberInspections") %>% 
+  ungroup() %>% 
+  #filter(NumberInspections > 4 | High_Risk_AIS_Ind == T) %>% 
+  group_by(Station) %>% 
+  mutate(StationYearTotal = sum(NumberInspections)) %>% 
+  ungroup() %>% 
+  # arrange(desc(StationYearTotal)) %>% 
+  #mutate(Station = fct_reorder(Station,StationYearTotal)) %>% 
+  ggplot() + 
+  geom_col(aes(x = reorder(month,desc(StationYearTotal)), y = NumberInspections, fill = High_Risk_AIS_Ind, group = Year), position = position_dodge()) + 
+  facet_wrap(Station ~ Year, scales = "free") + 
+  scale_x_discrete(labels = scales::label_wrap(10)) + 
+  scale_y_continuous(breaks = breaks_pretty(3)) +
+  scale_fill_brewer(palette = 'Dark2', direction = -1) +
+  labs(title = "Shoulder Season Inspections by Year and Station - Mt. Robson",
+       y = "Number of Total Inspections",
+       x = "Station",
+       fill = "Inspection Type") + 
+  theme_bw() + 
+  theme(legend.position = 'bottom',
+        text = element_text(size = 16),
+        axis.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        panel.grid.minor = element_blank())
+```
+
+```{r}
+
+## Split Data by Year and Inspection Type - Osoyoos
+
+shoulder_data %>% 
+  filter(Year %in% c(2016,2017)) %>% 
+  filter(Station %in% c("Osoyoos")) %>% 
+  mutate(High_Risk_AIS_Ind = case_when(
+    High_Risk_AIS_Ind == F ~ "Low Risk",
+    T ~ "High Risk"
+  )) %>% 
+  # mutate(Date = convertToDate(Start_Time)) %>% 
+  # mutate(Day = day(Date)) %>% 
+  group_by(Year,Station,month,High_Risk_AIS_Ind) %>% 
+  count(sort = T, name = "NumberInspections") %>% 
+  ungroup() %>% 
+  #filter(NumberInspections > 4 | High_Risk_AIS_Ind == T) %>% 
+  group_by(Station) %>% 
+  mutate(StationYearTotal = sum(NumberInspections)) %>% 
+  ungroup() %>% 
+  # arrange(desc(StationYearTotal)) %>% 
+  #mutate(Station = fct_reorder(Station,StationYearTotal)) %>% 
+  ggplot() + 
+  geom_col(aes(x = reorder(month,desc(StationYearTotal)), y = NumberInspections, fill = High_Risk_AIS_Ind, group = Year), position = position_dodge()) + 
+  facet_wrap(Station ~ Year, scales = "free") + 
+  scale_x_discrete(labels = scales::label_wrap(10)) + 
+  scale_y_continuous(breaks = breaks_pretty(3)) +
+  scale_fill_brewer(palette = 'Dark2', direction = -1) +
+  labs(title = "Shoulder Season Inspections by Year and Station - Osoyoos",
+       y = "Number of Total Inspections",
+       x = "Station",
+       fill = "Inspection Type") + 
+  theme_bw() + 
+  theme(legend.position = 'bottom',
+        text = element_text(size = 16),
+        axis.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        panel.grid.minor = element_blank())
+```
