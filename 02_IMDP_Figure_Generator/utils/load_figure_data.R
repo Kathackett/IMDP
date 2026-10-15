@@ -3,7 +3,19 @@
 if (!exists('dat')) {
   dat <- read.xlsx(paste0(my.data.folder, '/figure_dat.xlsx')) |> 
     mutate(TimeOfInspection = convertToDateTime(TimeOfInspection)) |> 
-    as_tibble() #|> 
+    as_tibble() |> 
+      mutate(Start_Time = as.POSIXct(
+        Start_Time * 86400,
+        origin = "1899-12-30",
+        tz = "UTC"
+      )) |> 
+      mutate(End_Time = as.POSIXct(
+        End_Time * 86400,
+        origin = "1899-12-30",
+        tz = "UTC"
+      ))
+  
+  #|> 
     # mutate(
     #   Station = case_when(
     #     Station == "Penticton Roving" ~ "Penticton",
