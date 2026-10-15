@@ -34,17 +34,7 @@ if(my.year == 2026){
 source(here::here("02_IMDP_Figure_Generator", "utils", "load_figure_data.R"))
 
 
-dat = dat |> 
-  mutate(Start_Time = as.POSIXct(
-    Start_Time * 86400,
-    origin = "1899-12-30",
-    tz = "UTC"
-  )) |> 
-  mutate(End_Time = as.POSIXct(
-    End_Time * 86400,
-    origin = "1899-12-30",
-    tz = "UTC"
-  ))
+
 
 
 ```
@@ -272,7 +262,57 @@ source(here::here("02_IMDP_Figure_Generator", "utils", "dat_to_stations.R"))
 
 ```{r numbers_for_exec_summary}
 
-# Exec summary now comes from metabase. 
+# this may not be needed- but run the script in isolation to get the tables and the associated values. Chris has relied on Metabase for these numbers so maybe just look there.
+
+
+source(here::here("02_IMDP_Figure_Generator", "utils", "get_exec_summary.R"))
+```
+
+```{r}
+# # still haveing issues with Sumas - quick fix here
+# station_labels = station_labels |> 
+#   mutate(
+#     station_type = case_when(
+#       map_label == "Sumas (Huntington)"          ~ "Part-time Inspection Station",
+#       TRUE ~ station_type
+#     )
+#   )
+# 
+# station_labels_this_year = station_labels_this_year |> 
+#   mutate(
+#     station_type = case_when(
+#       map_label == "Sumas (Huntington)"          ~ "Part-time Inspection Station",
+#       TRUE ~ station_type
+#     )
+#   )
+# 
+# stations_for_maps = stations_for_maps |> 
+#   mutate(
+#     station_type = case_when(
+#       map_label == "Sumas (Huntington)"          ~ "Part-time Inspection Station",
+#       TRUE ~ station_type
+#     )
+#   )
+# 
+# stations_for_maps_this_year = stations_for_maps_this_year |> 
+#   mutate(
+#     station_type = case_when(
+#       map_label == "Sumas (Huntington)"          ~ "Part-time Inspection Station",
+#       TRUE ~ station_type
+#     )
+#   )
+
+```
+
+
+```{r request_for_inspection_data}
+
+# request = dat_all |> 
+#   dplyr::select(Year, Watercraft_Risk_Assessment_ID, MusselsFound_Ind, High_Risk_AIS_Ind, Station, Watercraft_Has_Drainplugs_Ind, Drainplug_Removed_at_Inspection_Ind, Previous_Waterbody_1_Name, Previous_Waterbody_1_Closest_City, Previous_Waterbody_1_Province_Or_State, Destination_Waterbody_1_Name, Destination_Waterbody_1_Closest_City, Destination_Waterbody_1_Province_Or_State)
+# 
+# Sys.sleep(2)
+# write.csv(request, "C:/Users/JPHELAN/Documents/R_projects/long_term_projects/AIS_ZQMussels/data/inspection_data_request.csv")
+
 ```
 
 
@@ -290,6 +330,11 @@ source(here::here("02_IMDP_Figure_Generator", "utils", "dat_to_stations.R"))
 # station_labels = station_labels |> 
 #   dplyr::filter(station_name != "Radium")
 
+stations_for_maps <-stations_for_maps |> 
+  mutate(station_type = case_when(
+    station_name == "Cascade" ~ "Part-time Inspection Crew",
+    T ~ station_type
+  ))
 
 source(here::here("02_IMDP_Figure_Generator", "utils", "get_basemaps.R"))
 
@@ -607,12 +652,7 @@ dat |>
 
 ```{r fig3_total_boats_by_station}
 
-#Assigns Cascade to part-time inspection station - its only needed for bar charts and not for maps
-stations_for_maps <-stations_for_maps |> 
-  mutate(station_type = case_when(
-    station_name == "Cascade" ~ "Part-time Inspection Station",
-    T ~ station_type
-  ))
+
 
 source(here::here("02_IMDP_Figure_Generator", "utils", "dat_for_charts_and_pies.R"))
 
@@ -1800,33 +1840,20 @@ mf_time_table = mf_time_table |>
 write.xlsx(mf_time_table, paste0(my.external.output.folder,"/GIS Maps and Excel Figures/Fig24_MusselFouled_byMonth_2017-",my.year,".xlsx"))
 }
 
-library(RColorBrewer)
-
-my_palette <- brewer.pal(5, "Dark2")[c(1,2,3,4,8)]
-
-p24 <- mf_time_table |>
-  pivot_longer(-Year) |>
-  filter(name != "Total") |>
-  filter(name != "November") |>
-  filter(Year > my.year - 5) |>
-  rename(Month = name) |>
-  mutate(
-    NumberBoats = as.numeric(value),
-    Month = factor(
-      Month,
-      levels = c("April","May","June","July","August","September","October","November")
-    )
-  ) |>
-  mutate(Year = factor(Year, levels = c(2015:my.year+1))) |>
-  ggplot() +
-  geom_col(
-    aes(x = Month, y = NumberBoats, fill = Year),
-    col = "black",
-    position = position_dodge2(width = 0.5, preserve = "single")
-  ) +
-  scale_fill_manual(values = my_palette) +
-  theme_classic() +
-  scale_y_continuous(limits = c(0, 8), breaks = seq(0, 8, 1)) +
+p24 = mf_time_table |> 
+  pivot_longer(-Year) |> 
+  filter(name != "Total") |> 
+  dplyr::filter(name != "November") |> 
+  filter(Year > my.year-5) |> 
+  rename(Month = name) |> 
+  mutate(NumberBoats = as.numeric(value),
+         Month = factor(Month,levels = c("April","May","June","July","August","September","October","November"))) |> 
+  mutate(Year = factor(Year, levels = c(2015:my.year))) |> 
+  ggplot() + 
+  geom_col(aes(x = Month, y=NumberBoats, fill=Year), col="black", position=position_dodge2(width = 0.5, preserve = "single")) + 
+  scale_fill_brewer(palette = "Dark2") + 
+  theme_classic() + 
+  scale_y_continuous(limits = c(0,8), breaks = seq(0,8,1)) + 
   labs(x = "", y = "Mussel Fouled Boats")
 
 p24
