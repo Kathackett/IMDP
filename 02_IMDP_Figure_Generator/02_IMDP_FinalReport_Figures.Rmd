@@ -1845,20 +1845,34 @@ mf_time_table = mf_time_table |>
 write.xlsx(mf_time_table, paste0(my.external.output.folder,"/GIS Maps and Excel Figures/Fig24_MusselFouled_byMonth_2017-",my.year,".xlsx"))
 }
 
-p24 = mf_time_table |> 
-  pivot_longer(-Year) |> 
-  filter(name != "Total") |> 
-  dplyr::filter(name != "November") |> 
-  filter(Year > my.year-5) |> 
-  rename(Month = name) |> 
-  mutate(NumberBoats = as.numeric(value),
-         Month = factor(Month,levels = c("April","May","June","July","August","September","October","November"))) |> 
-  mutate(Year = factor(Year, levels = c(2015:my.year))) |> 
-  ggplot() + 
-  geom_col(aes(x = Month, y=NumberBoats, fill=Year), col="black", position=position_dodge2(width = 0.5, preserve = "single")) + 
-  scale_fill_brewer(palette = "Dark2") + 
-  theme_classic() + 
-  scale_y_continuous(limits = c(0,8), breaks = seq(0,8,1)) + 
+my_cols <- brewer.pal(8, "Dark2")[c(1, 2, 3, 4, 8)]
+
+p24 = mf_time_table |>
+  pivot_longer(-Year) |>
+  filter(name != "Total") |>
+  dplyr::filter(name != "November") |>
+  filter(Year > my.year - 5) |>
+  rename(Month = name) |>
+  mutate(
+    NumberBoats = as.numeric(value),
+    Month = factor(
+      Month,
+      levels = c(
+        "April", "May", "June", "July",
+        "August", "September", "October", "November"
+      )
+    )
+  ) |>
+  mutate(Year = factor(Year, levels = c(2015:my.year))) |>
+  ggplot() +
+  geom_col(
+    aes(x = Month, y = NumberBoats, fill = Year),
+    col = "black",
+    position = position_dodge2(width = 0.5, preserve = "single")
+  ) +
+  scale_fill_manual(values = my_cols) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 8), breaks = seq(0, 8, 1)) +
   labs(x = "", y = "Mussel Fouled Boats")
 
 p24
