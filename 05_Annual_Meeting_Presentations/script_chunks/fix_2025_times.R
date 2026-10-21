@@ -45,7 +45,6 @@ fix_2025_times <- function(dat, buffer_minutes = 15) {
       Inspection.Hour = hour(Inspection.Datetime)
     )
   
-  # Return only the ID and the new columns, like your old dat_2025_join
   fixed %>%
     transmute(
       Watercraft_Risk_Assessment_ID = as.numeric(Watercraft_Risk_Assessment_ID),
