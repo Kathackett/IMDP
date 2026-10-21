@@ -41,7 +41,7 @@ big_text = theme_minimal() +
 #my_opts = read_csv('C:/Users/CMADSEN/Downloads/LocalR/long_term_projects/ZQMussels/Options.csv')
 
 
-my_opts = read.csv("C:/Users/JPHELAN/OneDrive - Government of BC/R_projects/long_term_projects/AIS_ZQMussels/Options.csv")
+my_opts = read.csv(here::here("Options.csv"))
 # all_dat = openxlsx::read.xlsx(paste0(my_opts$zqm_figure_local_folder,'data/figure_dat_all.xlsx'))
 # readr::write_csv(all_dat, paste0(my_opts$zqm_figure_local_folder,'data/figure_dat_all.csv'))
 all_dat = vroom::vroom(paste0(my_opts$zqm_figure_local_folder,'data/figure_dat_all.csv'))
@@ -162,108 +162,28 @@ all_dat = all_dat |>
 # 
 # Match on year, shift id and watercraftrisk assesment ID
 
-dat_2025<-read.csv(here::here("./data/2025_all_data.csv"))
+#dat_2025<-read.csv(here::here("./data/2025_all_data.csv"))
 # names(dat_2025)
 # names(all_dat)
+source(here::here("05_Annual_Meeting_Presentations/script_chunks/fix_2025_times.R"))
+orig_dat = all_dat
 
+all_dat_all_cols<-read.xlsx("Z:/2 SCIENCE - Invasives/SPECIES/Zebra_Quagga_Mussel/Operations/Watercraft Inspection Data/Multiyear data/WatercraftInspectionData_AllYears_All_Columns.xlsx")
 
-dat2025 = dat_2025 |> 
-  select(-Inspection.Time) |> 
-  rename(Inspection.Time = Inspection.Time.Van)
+dat_2025_broken <- all_dat_all_cols |>
+  filter(Year == 2025)
 
-# Step 1: Fix Inspection.Datetime and Inspection.Hour
-buffer_minutes <- 15
+fixed_2025_times = fix_2025_times(dat_2025_broken)
 
-dat_2025 <- dat_2025 %>%
-  # Step 1: Clean and normalize Inspection.Time
-  mutate(
-    # Use the raw Inspection.Time column
-    TimeOfInspection = coalesce(Inspection.Time, Start.Time),
-
-    # Convert Excel numeric timestamps if present
-    TimeOfInspection = ifelse(str_detect(TimeOfInspection, "^[0-9]{5}"),
-                              as.character(openxlsx::convertToDateTime(TimeOfInspection)),
-                              TimeOfInspection),
-
-    # Ensure seconds are present
-    TimeOfInspection = str_replace_all(TimeOfInspection, " ([0-9])(:[0-9]{2})$", " 0\\1\\2:00"),
-    TimeOfInspection = str_replace_all(TimeOfInspection, " ([0-9]{2})(:[0-9]{2})$", " \\1\\2:00"),
-
-    # Parse to POSIXct
-    TimeOfInspection = ymd_hms(TimeOfInspection)
-  ) %>%
-  # Step 2: Convert to Vancouver local time and UTC
-  mutate(
-    Inspection.Datetime_VAN = with_tz(TimeOfInspection, tzone = "America/Vancouver"),
-    Inspection.Datetime_UTC = with_tz(Inspection.Datetime_VAN, tzone = "UTC"),
-    Start.Time = as_datetime(Start.Time),
-    End.Time   = as_datetime(End.Time)
-  ) %>%
-  # Step 3: Check against shift + buffer and adjust if needed
-  mutate(
-    inspection_ok = Inspection.Datetime_UTC >= (Start.Time - minutes(buffer_minutes)) &
-                    Inspection.Datetime_UTC <= (End.Time + minutes(buffer_minutes)),
-
-    # Subtract 8 hours from Vancouver time if outside shift
-    Inspection.Datetime_VAN = if_else(
-      !inspection_ok,
-      Inspection.Datetime_VAN - hours(8),
-      Inspection.Datetime_VAN
-    ),
-
-    # Recalculate UTC after adjustment
-    Inspection.Datetime_UTC = with_tz(Inspection.Datetime_VAN, tzone = "UTC"),
-
-    # Recalculate hour in Vancouver
-    Inspection.Hour = hour(Inspection.Datetime_VAN)
-  ) %>%
-  select(-inspection_ok)
-
-
-test_check <- dat_2025 %>%
-  mutate(
-    # Check if UTC inspection falls within shift + buffer
-    inspection_ok_buffer = Inspection.Datetime_UTC >= (Start.Time - minutes(buffer_minutes)) &
-                           Inspection.Datetime_UTC <= (End.Time + minutes(buffer_minutes))
-  )
-
-# Quick summary
-# table(test_check$inspection_ok_buffer)
-
-
-# Prepare dat_2025 for joining
-dat_2025_join <- dat_2025 %>%
-  rename(
-    Shift_Start_Comment = Shift.Start.Comment
-  ) %>%
-  select(Watercraft.Risk.Assessment.ID,
-         Inspection.Datetime_UTC,
-         Inspection.Hour,
-         Station,
-         Shift_Start_Comment)
-
-
-
-# Join with all_dat
 all_dat <- all_dat %>%
-  left_join(dat_2025_join,
-            by = c("Watercraft_Risk_Assessment_ID" = "Watercraft.Risk.Assessment.ID"),
-            suffix = c("", ".new")) %>%
+  left_join(fixed_2025_times, by = "Watercraft_Risk_Assessment_ID") %>%
   mutate(
-    Station = coalesce(Station.new, Station),
-    Shift_Start_Comment = coalesce(Shift_Start_Comment.new, Shift_Start_Comment),
-    TimeOfInspection = coalesce(Inspection.Datetime_UTC, TimeOfInspection),
+    TimeOfInspection = coalesce(Inspection.Datetime, TimeOfInspection),
     Inspection_Hour  = as.numeric(coalesce(Inspection.Hour, Inspection_Hour))
   ) %>%
-  select(-ends_with(".new"), -Inspection.Datetime_UTC, -Inspection.Hour)
+  select(-Inspection.Datetime, -Inspection.Hour, -Inspection.Status)
 
-
-hourly_count <- dat_2025_join %>%
-  # Filter out missing values if you only want to count valid hours
-  filter(!is.na(Inspection.Hour)) %>%
-  # Count the occurrences of each unique hour
-  count(Inspection.Hour, name = "Count_of_Inspections")
-
+rm(all_dat_all_cols,dat_2025_broken)
 
 ## Quick fix for a wrong entry
 all_dat <- all_dat |>
@@ -404,9 +324,9 @@ summ_table = summ_table |>
   left_join(
     tibble(
       Year = c(2015:most_rec_year),
-      `Advanced Notification` = c(7,10,20,20,16,13,7,7,6,5,3),
-      Tickets = c(NA,46,59,82,113,101,85,63,NA,NA, -999),
-      Warnings = c(NA,36,86,50,113,76,45,66,NA,NA, -999)
+      `Advanced Notification` = c(7,10,20,20,16,13,7,7,6,5,3,-999),
+      Tickets = c(NA,46,59,82,113,101,85,63,NA,NA, -999,-999),
+      Warnings = c(NA,36,86,50,113,76,45,66,NA,NA, -999,-999)
     )
   ) |> 
   mutate(across(c("Total Watercraft Inspected","People Interactions"), \(x) round(x,-2)))
