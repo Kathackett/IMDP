@@ -44,5 +44,5 @@ lake_monitoring_for_report_appendix.xlsx
 AIS_IMDP_Figures_KH.Rproj
 .vscode
 AIS_ZQMussels.Rproj
-update_imdp_automatically.zip
+update_imdp_automatically.bat
 download_annual_metabase_csv.py
