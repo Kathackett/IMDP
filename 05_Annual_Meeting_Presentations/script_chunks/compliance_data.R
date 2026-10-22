@@ -27,9 +27,9 @@ compliance_dat <- compliance_dat |>
   tibble::as_tibble()
 
 
-if (current_year %in% names(compliance_dat)) {
+if (as.character(most_rec_year) %in% names(compliance_dat)) {
   compliance_dat <- compliance_dat |>
-    select(-all_of(most_rec_year))
+    select(-all_of(as.character(most_rec_year)))
 }
 
 # Read in blowbys
