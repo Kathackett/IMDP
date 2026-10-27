@@ -19,18 +19,17 @@ compliance_dat = tibble(
 
 stations.to.include = c("Mt. Robson","Osoyoos","Olsen","Yahk","Radium","Dawson Creek","Golden","Pacific")
 
+if (as.character(most_rec_year) %in% names(compliance_dat)) {
+  compliance_dat <- compliance_dat |>
+    select(-all_of(as.character(most_rec_year)))
+}
+
 compliance_dat <- compliance_dat |>
   tibble::column_to_rownames("Year") |>
   t() |>
   as.data.frame() |>
   tibble::rownames_to_column("Station") |>
   tibble::as_tibble()
-
-
-if (as.character(most_rec_year) %in% names(compliance_dat)) {
-  compliance_dat <- compliance_dat |>
-    select(-all_of(as.character(most_rec_year)))
-}
 
 # Read in blowbys
 blowb = vroom::vroom(paste0("//sfp.idir.bcgov/S140/S40203/WFC AEB/General/2 SCIENCE - Invasives/SPECIES/Zebra_Quagga_Mussel/Operations/Watercraft Inspection Data/Raw inspection data for sharing (all years)/Clean files all years/metabase_blowby_table_2024_onwards.csv")) |> 
