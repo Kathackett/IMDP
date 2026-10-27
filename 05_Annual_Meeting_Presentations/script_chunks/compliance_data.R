@@ -25,10 +25,10 @@ if (as.character(most_rec_year) %in% names(compliance_dat)) {
 }
 
 compliance_dat <- compliance_dat |>
-  tibble::column_to_rownames("Year") |>
+  tibble::column_to_rownames("Station") |>
   t() |>
   as.data.frame() |>
-  tibble::rownames_to_column("Station") |>
+  tibble::rownames_to_column("Year") |>
   tibble::as_tibble()
 
 # Read in blowbys
@@ -87,26 +87,50 @@ compliance_current <- dat_w_blowbys |>
   ) |>
   select(Station, compliance)
 
-compliance_dat <- compliance_dat |>
-  left_join(compliance_current, by = "Station") |>
-  rename(!!year_col := compliance)
+
+compliance_current = compliance_current |> 
+  pivot_wider(names_from = Station, values_from = compliance) |> 
+  mutate(Year = 2026)
+# 
+# compliance_dat <- compliance_dat |>
+#   left_join(compliance_current, by = "Station") |>
+#   rename(!!year_col := compliance)
+
+compliance_current <- compliance_current |> 
+  mutate(Year = as.character(Year))
+
+compliance_dat <- bind_rows(compliance_dat, compliance_current)
 
 compliance_dat <- compliance_dat |>
   mutate(
-    !!year_col := if_else(
-      Station == "Average Compliance",
-      mean(.data[[year_col]], na.rm = TRUE),
-      .data[[year_col]]
+    `Average Compliance` = if_else(
+      Year == "2026",
+      rowMeans(
+        pick(
+          `Mt. Robson`,
+          Osoyoos,
+          Olsen,
+          Yahk,
+          Radium,
+          `Dawson Creek`,
+          Golden,
+          Pacific
+        ),
+        na.rm = TRUE
+      ),
+      `Average Compliance`
     )
   )
 
-compliance_dat <- compliance_dat |>
-  tibble::column_to_rownames("Station") |>
-  t() |>
-  as.data.frame() |>
-  tibble::rownames_to_column("Year") |>
-  tibble::as_tibble()
+# compliance_dat <- compliance_dat |>
+#   tibble::column_to_rownames("Station") |>
+#   t() |>
+#   as.data.frame() |>
+#   tibble::rownames_to_column("Year") |>
+#   tibble::as_tibble()
 
+compliance_dat <- compliance_dat |> 
+  mutate(`2026` = round(`2026`,3))
 if (file.exists(here::here("05_Annual_Meeting_Presentations/output/compliance_table.csv"))) {
   file.remove(here::here("05_Annual_Meeting_Presentations/output/compliance_table.csv"))
 }
