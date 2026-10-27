@@ -693,64 +693,68 @@ make_bar_with_lbls(
 
 ```
 
-## Total Inspections - Boat Launches (2026)
 
 ```{r}
-testing<- all_dat |> 
-  filter(Year == 2026)
 
-station2025=dat_2026 |> 
-  group_by(Station) |> 
-  summarise(count = n()) |> 
-  arrange(desc(count))
+## Total Inspections - Boat Launches (2026)
+## Do not worry about boat launches for 2026. This was exploratory I believe. 
+################################################################################
+
+#testing<- all_dat |> 
+#  filter(Year == 2026)
+
+#station2025=dat_2026 |> 
+#  group_by(Station) |> 
+#  summarise(count = n()) |> 
+#  arrange(desc(count))
 #No boat stations
-boat = testing |>
-  filter(Year == 2026) |>
-  filter(str_detect(Station, "[bB]oat"))
+#boat = testing |>
+#  filter(Year == 2026) |>
+#  filter(str_detect(Station, "[bB]oat"))
 
 
-test <- testing |> 
-  filter(Year == 2026) |> 
-  filter(str_detect(Station, "[oO]utreach")) |> 
-  mutate(
-    Station = case_when(
-      str_detect(
-        Shift_Start_Comment,
-        regex("1000-1930\\s*(Oddy|Osborne).*Woolridge", ignore_case = TRUE)
-      ) ~ "Osborne & Woolridge",
+#test <- testing |> 
+#  filter(Year == 2026) |> 
+#  filter(str_detect(Station, "[oO]utreach")) |> 
+#  mutate(
+#    Station = case_when(
+#      str_detect(
+#        Shift_Start_Comment,
+#        regex("1000-1930\\s*(Oddy|Osborne).*Woolridge", ignore_case = TRUE)
+#      ) ~ "Osborne & Woolridge",
       
-      str_detect(
-        Shift_Start_Comment,
-        regex("christina lake", ignore_case = TRUE)
-      ) ~ "Christina Lake",
+#      str_detect(
+#        Shift_Start_Comment,
+#        regex("christina lake", ignore_case = TRUE)
+#      ) ~ "Christina Lake",
       
-      str_detect(
-        Shift_Start_Comment,
-        regex("Greenwood| green wood", ignore_case = TRUE)
-      ) ~ "Greenwood",
-      str_detect(
-        Shift_Start_Comment,
-        regex("[lL]och|\\s*[lL]omond", ignore_case = TRUE)
-      ) ~ "Loch Lomond",
+ #     str_detect(
+#        Shift_Start_Comment,
+#        regex("Greenwood| green wood", ignore_case = TRUE)
+#      ) ~ "Greenwood",
+#      str_detect(
+#        Shift_Start_Comment,
+#        regex("[lL]och|\\s*[lL]omond", ignore_case = TRUE)
+#      ) ~ "Loch Lomond",
       
       
-      TRUE ~ Station
-    )
-  )
+#      TRUE ~ Station
+#    )
+#  )
   
-launches=test |> 
-  group_by(Shift_Start_Comment, Station, General_Comment) |> 
-  summarise(count = n())
+#launches=test |> 
+#  group_by(Shift_Start_Comment, Station, General_Comment) |> 
+#  summarise(count = n())
 
-launches |>
-  arrange(desc(count)) |>
-  head(10) |> 
-  kable(
-    caption = "Shift Start Comment Counts by Station",
-    col.names = c("Shift Start Comment", "Station","General Comment", "Count"),
-    align = c("l", "l", "c"),
-    format = "html"
-  ) 
+#launches |>
+#  arrange(desc(count)) |>
+#  head(10) |> 
+#  kable(
+#    caption = "Shift Start Comment Counts by Station",
+#    col.names = c("Shift Start Comment", "Station","General Comment", "Count"),
+#    align = c("l", "l", "c"),
+#    format = "html"
+ # ) 
 
 
 ```
@@ -1334,27 +1338,11 @@ ggplot_fig
 ```
 
 ```{r compliance_by_station}
-<<<<<<< HEAD
-## This comes from where?????
 
-compliance_dat = tibble(
-  Station = c("Mt. Robson","Osoyoos","Olsen","Yahk","Radium","Dawson Creek","Golden","Pacific","Average Compliance"),
-  `2017` = c(0.97,0.95,NA,0.73,0.75,0.88,0.76,0.48,0.77),
-  `2018` = c(0.97,1,0.9,0.84,0.85,0.94,0.85,0.58, 0.81),
-  `2019` = c(0.98,1,0.93,0.89,0.89,0.93,0.85,0.6, 0.83),
-  `2020` = c(0.966,0.87,0.884,0.884,0.838,NA,0.863,0.666,0.877),
-  `2021` = c(0.98,0.98,0.91,0.89,0.88,0.88,0.86,0.75,0.874),
-  `2022` = c(0.97,0.99,0.92,NA,0.88,0.92,0.89,0.59,0.880),
-  `2023` = c(0.97,1,0.885,0.9,NA,0.94,0.87,0.59,0.88),
-  `2024` = c(0.984,0.996,0.870,0.901,NA,0.961,0.921,0.792,0.907),
-  `2025` = c(0.978,0.981,0.902,0.938,0.88,0.94,0.915,0.845,0.922)
-  
-)
-=======
 ## I think this was done by hand before. it can be done here in a script instead and added to the table below. - then we can save the table, and for following years, add a new row to the table and save it? 
 
 
-source(here::here("05_Annual_Meeting_Presentations/script_chunks/compliance_rata.R"))
+source(here::here("05_Annual_Meeting_Presentations/script_chunks/compliance_data.R"))
 
 compliance_dat <- read.csv(
   here::here("05_Annual_Meeting_Presentations/output/compliance_table.csv"),
@@ -1367,7 +1355,6 @@ compliance_dat <- read.csv(
   tibble::as_tibble() |>
   mutate(across(-Station, as.numeric))
 
->>>>>>> 59c37673796cfc29c5480a1e6c4eda94e9e4d7f6
 
 compliance_table = compliance_dat |> 
   mutate(across(-Station, \(x) ifelse(!is.na(x), paste0(100*x,'%'), x))) |> 
@@ -1392,6 +1379,8 @@ compliance_table_k = kableExtra::kbl(compliance_table, format = "html", table.at
   kableExtra::kable_minimal() |> 
   kableExtra::column_spec(ncol(compliance_table), 
                           color = compliance_colours)
+```
+
 ```
 
 ## Compliance by Station
