@@ -1334,6 +1334,7 @@ ggplot_fig
 ```
 
 ```{r compliance_by_station}
+<<<<<<< HEAD
 ## This comes from where?????
 
 compliance_dat = tibble(
@@ -1349,6 +1350,24 @@ compliance_dat = tibble(
   `2025` = c(0.978,0.981,0.902,0.938,0.88,0.94,0.915,0.845,0.922)
   
 )
+=======
+## I think this was done by hand before. it can be done here in a script instead and added to the table below. - then we can save the table, and for following years, add a new row to the table and save it? 
+
+
+source(here::here("05_Annual_Meeting_Presentations/script_chunks/compliance_rata.R"))
+
+compliance_dat <- read.csv(
+  here::here("05_Annual_Meeting_Presentations/output/compliance_table.csv"),
+  check.names = FALSE
+) |>
+  tibble::column_to_rownames("Year") |>
+  t() |>
+  as.data.frame() |>
+  tibble::rownames_to_column("Station") |>
+  tibble::as_tibble() |>
+  mutate(across(-Station, as.numeric))
+
+>>>>>>> 59c37673796cfc29c5480a1e6c4eda94e9e4d7f6
 
 compliance_table = compliance_dat |> 
   mutate(across(-Station, \(x) ifelse(!is.na(x), paste0(100*x,'%'), x))) |> 
