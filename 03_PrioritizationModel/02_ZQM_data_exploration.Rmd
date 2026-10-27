@@ -47,7 +47,7 @@ if(!dir.exists(paste0(getwd(),"/data/"))) {
 }
 
 #shapefiles...
-data.path = paste0(my_opts$base_dir,"/01_DataCleaning/","data/")
+data.path = paste0(my_opts$base_dir,"01_DataCleaning/","data/")
 
 # if(!dir.exists(paste0(data.path,"shapefiles"))) {
 #   dir.create(paste0(data.path,"shapefiles"))
@@ -183,7 +183,7 @@ hist(lubridate::year(df$date))
 
 ```{r read_in_wb_and_subw_shapefiles}
 #Read in the water body shapefiles
-waterbodies = read_sf(paste0(my_opts$base_dir, "/01_DataCleaning/data/summarized_bc_waterbodies_same_gnis_joined.gpkg"))
+waterbodies = read_sf(paste0(my_opts$base_dir, "01_DataCleaning/data/summarized_bc_waterbodies_same_gnis_joined.gpkg"))
 # Read in subwatershed (N = 246) shapefile
 watershed = read_sf(paste0(my_opts$remote_spatial_data,"shared_data_sets/WatershedGroups_lowres.shp"))
 ```
@@ -311,8 +311,9 @@ total_calc <- nrow(
     st_join(waterbodies) |>
     dplyr::filter(!is.na(WATERSH))
   
-  pH = df_f_match_to_wbs |> filter(parameter %in% c("ph (acidity)", "ph-field (acidity)")) |> dplyr::rename(WATERSHED_ = WATERSH)
   calc = df_f_match_to_wbs |> filter(!parameter %in% c("ph (acidity)", "ph-field (acidity)")) |> dplyr::rename(WATERSHED_ = WATERSH)
+  
+  pH = df_f_match_to_wbs |> filter(parameter %in% c("ph (acidity)", "ph-field (acidity)")) |> dplyr::rename(WATERSHED_ = WATERSH)
   
   # Summarized number of data points for pH and calcium by subwatershed.
   pH_by_subw = pH |>
