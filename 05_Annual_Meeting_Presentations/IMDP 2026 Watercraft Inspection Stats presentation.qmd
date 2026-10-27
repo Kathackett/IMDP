@@ -1344,21 +1344,7 @@ ggplot_fig
 
 source(here::here("05_Annual_Meeting_Presentations/script_chunks/compliance_data.R"))
 
-compliance_dat <- read.csv(
-  here::here("05_Annual_Meeting_Presentations/output/compliance_table.csv"),
-  check.names = FALSE
-) |>
-  tibble::column_to_rownames("Year") |>
-  t() |>
-  as.data.frame() |>
-  tibble::rownames_to_column("Station") |>
-  tibble::as_tibble() |>
-  mutate(across(-Station, as.numeric))
 
-
-compliance_table = compliance_dat |> 
-  mutate(across(-Station, \(x) ifelse(!is.na(x), paste0(100*x,'%'), x))) |> 
-  as.data.frame()
 
 compliance_trendline = compliance_dat[nrow(compliance_dat),] |> 
   pivot_longer(-Station, names_to = 'Year') |> 
@@ -1374,6 +1360,10 @@ compliance_colours = ifelse(compliance_delta > 0,
                                          "red")
 compliance_colours[is.na(compliance_colours)] <- "black"
 
+# display version: one decimal, trailing zeros dropped (97%, 96.6%, 99.8%)
+compliance_table <- compliance_dat |>
+  mutate(across(-Station, \(x) ifelse(is.na(x), NA, paste0(round(x * 100, 1), "%"))))
+
 compliance_table_k = kableExtra::kbl(compliance_table, format = "html", table.attr = "style='width:50%';font-size=10px;") |> 
   kableExtra::kable_paper(full_width = T) |> 
   kableExtra::kable_minimal() |> 
@@ -1381,7 +1371,7 @@ compliance_table_k = kableExtra::kbl(compliance_table, format = "html", table.at
                           color = compliance_colours)
 ```
 
-```
+
 
 ## Compliance by Station
 
