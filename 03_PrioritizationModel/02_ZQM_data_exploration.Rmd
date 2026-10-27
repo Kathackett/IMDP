@@ -47,7 +47,7 @@ if(!dir.exists(paste0(getwd(),"/data/"))) {
 }
 
 #shapefiles...
-data.path = paste0(my_opts$base_dir,"01_DataCleaning/","data/")
+data.path = paste0(my_opts$base_dir,"/01_DataCleaning/","data/")
 
 # if(!dir.exists(paste0(data.path,"shapefiles"))) {
 #   dir.create(paste0(data.path,"shapefiles"))
@@ -130,34 +130,55 @@ if(my_opts$zqm_risk_climate_model == "ssp245"){
 # BIO19 = Precipitation of Coldest Quarter
 
 # Query from EMS!
-ems_path = paste0(my_opts$base_dir, "../../long_term_projects/AIS_EMS/output/EMS.sqlite")
-conn = dbConnect(SQLite(), ems_path)
-df = DBI::dbGetQuery(conn, "SELECT * FROM results where PARAMETER like 'Calcium %' or PARAMETER like 'pH'") |> 
-  dplyr::filter(LOCATION_TYPE %in% c("DITCH OR CULVERT","LAKE OR POND","MONITORING WELL","PROVINCIAL OBS WELL NETWORK","RIVER,STREAM OR CREEK"))
+ems_path <- here::here("..", "AIS_EMS", "output", "enmods.sqlite")
+conn <- DBI::dbConnect(
+  RSQLite::SQLite(),
+  ems_path
+)
+# df = DBI::dbGetQuery(conn, "SELECT * FROM results where PARAMETER like 'Calcium %' or PARAMETER like 'pH'")
+var_name <-c("ph (acidity)", "ph-field (acidity)", "calcium")
+query <- paste0(
+  "SELECT *
+   FROM results
+   WHERE medium IN (
+     'Water - Fresh',
+     'Water - Other',
+     'Water - Surface Film',
+     'Water - Ground'
+   )
+   AND (",
+  paste0(
+    "LOWER(parameter) LIKE '%", tolower(var_name), "%'",
+    collapse = " OR "
+  ),
+  ")"
+)
+df = DBI::dbGetQuery(conn, query)
+
 # ems_temp = DBI::dbGetQuery(conn, "SELECT * FROM results where PARAMETER like 'Temperature%'")
 DBI::dbDisconnect(conn)
 
 #Get rid of columns 29 to 60, which we do not need.
-df = df[,c(1:28)]
+#df = df[,c(1:28)]
 
 ```
 
 ```{r combine_data}
-df = df |> 
-  dplyr::select(EMS_ID, MONITORING_LOCATION,LOCATION_TYPE,COLLECTION_START,COLLECTION_END,SAMPLING_AGENCY,COLLECTION_METHOD,PARAMETER,ANALYTICAL_METHOD,RESULT,UNIT,LONGITUDE,LATITUDE)
+
 
 # Ensure we dont' have points with missing locations or sampling dates.
-df = df |> 
-  dplyr::filter(!is.na(LATITUDE),
-                !is.na(LONGITUDE)) |> 
-  dplyr::filter(!(is.na(COLLECTION_START) & is.na(COLLECTION_END)))
 
 # Clean up date columns!
-df = df |> 
-  dplyr::mutate(COLLECTION_START = lubridate::ymd_hms(COLLECTION_START),
-                COLLECTION_END = lubridate::ymd_hms(COLLECTION_END))
+df <- df |>
+  dplyr::filter(
+    !is.na(lat),
+    !is.na(lon)
+  ) |>
+  dplyr::mutate(
+    date = lubridate::ymd(date)
+  )
 
-hist(lubridate::year(df$COLLECTION_END)) #What's the distribution of data through time?
+hist(lubridate::year(df$date))
 ```
 
 ```{r read_in_wb_and_subw_shapefiles}
@@ -172,10 +193,15 @@ watershed = read_sf(paste0(my_opts$remote_spatial_data,"shared_data_sets/Watersh
 # decisions of which waterbodies to include or not include on the final
 # waterbody list for substrate / plankton tow sampling
 calcium_match_to_wbs = df |>
-  dplyr::filter(PARAMETER != 'pH') |>
-  dplyr::filter(RESULT < 300) |> 
-  dplyr::filter(!is.na(LATITUDE)) |> 
-  st_as_sf(coords = c('LONGITUDE','LATITUDE'),
+  dplyr::filter(
+    !parameter %in% c(
+      "ph (acidity)",
+      "ph-field (acidity)"
+    )
+  ) |>
+
+  dplyr::filter(!is.na(lat)) |> 
+  st_as_sf(coords = c('lon','lat'),
            crs = 4326) |> 
   sf::st_transform(crs = 3005) |> 
   st_join(waterbodies) |> 
@@ -184,13 +210,13 @@ calcium_match_to_wbs = df |>
 
 calcium_match_to_wbs = calcium_match_to_wbs |> 
   sf::st_drop_geometry() |> 
-  dplyr::mutate(RESULT_100_f = ifelse(RESULT >= 100, NA, RESULT)) |> 
+  dplyr::mutate(RESULT_100_f = ifelse(value >= 100, NA, value)) |> 
   dplyr::mutate(RESULT_100_f_include = !is.na(RESULT_100_f)) |> 
   dplyr::group_by(WATERSHED_,GNIS_NA) |> 
-  dplyr::summarise(mean_calcium_wb = mean(RESULT, na.rm=T),
-                   min_calcium_wb = min(RESULT, na.rm=T),
-                   max_calcium_wb = max(RESULT,na.rm=T),
-                   standard_deviation_calcium_wb = sd(RESULT, na.rm=T),
+  dplyr::summarise(mean_calcium_wb = mean(value, na.rm=T),
+                   min_calcium_wb = min(value, na.rm=T),
+                   max_calcium_wb = max(value,na.rm=T),
+                   standard_deviation_calcium_wb = sd(value, na.rm=T),
                    number_calcium_data_points_wb = n(),
                    mean_calcium_100_f_wb = mean(RESULT_100_f, na.rm=T),
                    min_calcium_100_f_wb = min(RESULT_100_f, na.rm=T),
@@ -204,15 +230,38 @@ write.csv(calcium_match_to_wbs, "output/calcium_only_filtered_for_sub_300_and_10
 
 ```{r filter_outliers_from_calcium_and_pH}
 
-df_f = df |> 
-  dplyr::filter(!is.na(RESULT)) |> 
-  mutate(retain_point = case_when(
-    PARAMETER == 'pH' & (RESULT <= 0 | RESULT > 16.5) ~ F,
-    PARAMETER != 'pH' & (RESULT <= 0 | RESULT > 300) ~ F,
-    stringr::str_detect(PARAMETER,"Calcium") & UNIT != "mg/L" ~ F,
-    T ~ T
-  )) |> 
-  dplyr::filter(retain_point)
+
+df_f <- df |>
+  mutate(
+    is_ph = stringr::str_detect(
+      stringr::str_to_lower(parameter),
+      "^ph"
+    ),
+    is_calcium = stringr::str_detect(
+      stringr::str_to_lower(parameter),
+      "calcium"
+    )
+  ) |>
+  filter(
+    !is.na(value),
+    if_else(is_ph, value > 0 & value <= 16.5, value > 0 & value <= 300),
+    !(is_calcium & unit != "mg/L")
+  )
+  # mutate(
+  #   is_ph = stringr::str_detect(
+  #     stringr::str_to_lower(parameter),
+  #     "^ph"
+  #   ),
+  #   is_calcium = stringr::str_detect(
+  #     stringr::str_to_lower(parameter),
+  #     "calcium"
+  #   )
+  # ) |>
+  # filter(
+  #   !is.na(value),
+  #   if_else(is_ph, value > 0 & value <= 16.5, value > 0 & value <= 300),
+  #   !(is_calcium & unit != "mg/L")
+  # )
 
 # # Temporary addition - calcium filtered at 100 mg/L; stricter than 300 mg/L.
 # df_100 = df |> 
@@ -236,21 +285,34 @@ Note: pH values below 0 and above 16.5 were removed. Calcium values equal to or 
 
 # This code has been modified to allow for testing of calcium filtering cut-off: 300 or 100 mg/L.
 
+
+
   # Calculate number of data points for pH and calcium
-  total_pH = nrow(df_f |> dplyr::filter(PARAMETER == 'pH'))
-  total_calc = nrow(df_f |> dplyr::filter(PARAMETER != 'pH'))
+total_pH <- nrow(
+  df_f |>
+    dplyr::filter(
+      parameter %in% c("ph (acidity)", "ph-field (acidity)")
+    )
+)
+
+total_calc <- nrow(
+  df_f |>
+    dplyr::filter(
+      !parameter %in% c("ph (acidity)", "ph-field (acidity)")
+    )
+)
   
   # Simple spatial match to waterbodies
   df_f_match_to_wbs = df_f |>
-    dplyr::filter(!is.na(LATITUDE)) |> 
-    st_as_sf(coords = c('LONGITUDE','LATITUDE'),
+    dplyr::filter(!is.na(lat)) |> 
+    st_as_sf(coords = c('lon','lat'),
              crs = 4326) |> 
     sf::st_transform(crs = 3005) |> 
     st_join(waterbodies) |>
     dplyr::filter(!is.na(WATERSH))
   
-  pH = df_f_match_to_wbs |> filter(PARAMETER == 'pH') |> dplyr::rename(WATERSHED_ = WATERSH)
-  calc = df_f_match_to_wbs |> filter(PARAMETER != 'pH') |> dplyr::rename(WATERSHED_ = WATERSH)
+  pH = df_f_match_to_wbs |> filter(parameter %in% c("ph (acidity)", "ph-field (acidity)")) |> dplyr::rename(WATERSHED_ = WATERSH)
+  calc = df_f_match_to_wbs |> filter(!parameter %in% c("ph (acidity)", "ph-field (acidity)")) |> dplyr::rename(WATERSHED_ = WATERSH)
   
   # Summarized number of data points for pH and calcium by subwatershed.
   pH_by_subw = pH |>
@@ -306,10 +368,11 @@ ggsave(filename = 'output/calc_EMS_records_spatially_matched_to_waterbodies.png'
 
 ```{r mean_pH_value_by_subw}
 mean_pH_by_subw = pH |> 
+  mutate(value = as.numeric(value)) |> 
   sf::st_drop_geometry() |> 
   dplyr::group_by(WATERSHED_) |> 
-  dplyr::summarise(mean_pH = mean(RESULT, na.rm=T),
-                   standard_deviation_pH = sd(RESULT, na.rm=T),
+  dplyr::summarise(mean_pH = mean(value, na.rm=T),
+                   standard_deviation_pH = sd(value, na.rm=T),
                    number_pH_data_points = n())
 
 watershed |> 
@@ -347,10 +410,11 @@ write.csv(calc_values_various_filters_by_subw, paste0(here::here(),"/01_DataClea
 
 # Back to our regularly scheduled programming!
 mean_calc_by_subw = calc |> 
+  mutate(value = as.numeric(value)) |> 
   sf::st_drop_geometry() |> 
   dplyr::group_by(WATERSHED_) |> 
-  dplyr::summarise(mean_calcium = mean(RESULT, na.rm=T),
-                   standard_deviation_calcium = sd(RESULT, na.rm=T),
+  dplyr::summarise(mean_calcium = mean(value, na.rm=T),
+                   standard_deviation_calcium = sd(value, na.rm=T),
                    number_calcium_data_points = n())
 
 
