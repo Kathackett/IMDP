@@ -662,23 +662,27 @@ make_bar_with_lbls(
 
 ```
 
-## Outreach plots 2026
 
 ```{r outreach_plots}
+#####################
+#No outreach stations found for 2026
+#####################
 
-outreach = all_dat |> 
-  filter(str_detect(Station, "Outreach"))
+## Outreach plots 2026
+
+#outreach = all_dat |> 
+#  filter(str_detect(Station, "Outreach"))
   
-make_bar_with_lbls(
-  data = outreach,
-  y_var_label = "Total Inspections",
-  fill_var = "Station",
-  label_cutoff = 50,
-  station_filter = 'none',
-  highlight_field = 'High_Risk_AIS_Ind',
-  # year_filter = c(2021:most_rec_year)
-  year_filter = this_year
-)
+#make_bar_with_lbls(
+#  data = outreach,
+#  y_var_label = "Total Inspections",
+#  fill_var = "Station",
+#  label_cutoff = 50,
+#  station_filter = 'none',
+#  highlight_field = 'High_Risk_AIS_Ind',
+#  # year_filter = c(2021:most_rec_year)
+#  year_filter = this_year
+#)
   
 
 ```
@@ -946,23 +950,6 @@ other_types <- other_types |>
 
 ```
 
-## Other Stations (Other, Emergency, Project) - No comment
-
-```{r other_dat_no_comment}
-
-blank_comments <- all_dat |> 
-  filter(Year == 2026 & str_detect(Station, "Other|Emergency|Project") 
-         & Shift_Start_Comment == "") 
-  
-datatable(
-  blank_comments |> 
-    select(Station, Watercraft_Risk_Assessment_ID, MusselsFound_Ind, High_Risk_AIS_Ind,
-           High_Risk_Area_Ind, Start_Time, End_Time, TimeOfInspection,Shift_Start_Comment, Shift_End_Comment,
-           General_Comment),
-  options = list( pageLength = 10, scrollX = T, autowidth = T),
-  rownames = F
-)      
-```
 
 ```{r}
 
@@ -977,63 +964,7 @@ if(interactive()){
 }
 ```
 
-## Radium in 2025 - Source
 
-```{r radium_2025_plots}
-## This is for 2025 and not needed in 2026. 
-##rad |> 
-#  dplyr::rename(srce = Previous_Waterbody_1_Province_Or_State) |> 
-#  dplyr::mutate(srce = as.factor(srce)) |> 
-#  dplyr::group_by(Year) | 
-#  dplyr::mutate(srce = forcats::fct_lump(srce, n = 4)) |> 
-#  dplyr::ungroup() |> 
-#  make_bar_with_lbls(
-#    year_filter = this_year,
-#    y_var_label = 'Total Inspections',
-#    x_var = 'srce',
-#    fill_var = 'Year',
-#    station_filter = 'Radium',
-#    label_cutoff = 600,
-#    ggplotify = F,
-#    add_sep_lines = T
-#  )
-#rad_year = rad[rad$Year == 2026,]
-#rad_sources<- unique(rad_year$Previous_Waterbody_1_Province_Or_State)
-
-```
-
-The full list of provinces/states in the "Other" category are `r sort(rad_sources)`.
-
-```{r rad_other_sources}
-## Radium - other sources
-# rad_other = rad |> 
-#   filter(Year == this_year)
-# 
-# unique(rad_other$Previous_Waterbody_1_Province_Or_State)
-
-```
-
-## Radium in 2025 - Source of High Risk Inspections
-
-```{r radium_2025_HR}
-all_dat |> 
-  dplyr::filter(High_Risk_AIS_Ind) |> 
-  dplyr::rename(srce = Previous_Waterbody_1_Province_Or_State) |> 
-  dplyr::mutate(srce = as.factor(srce)) |> 
-  dplyr::group_by(Year) |> 
-  dplyr::mutate(srce = forcats::fct_lump(srce, n = 4)) |> 
-  dplyr::ungroup() |> 
-  make_bar_with_lbls(
-    year_filter = this_year,
-    y_var_label = 'High Risk Inspections',
-    x_var = 'srce',
-    fill_var = 'Year',
-    station_filter = 'Radium',
-    label_cutoff = 20,
-    ggplotify = F,
-    add_sep_lines = T
-  )
-```
 
 ## Risk of Whirling Disease - Permanent Stations
 
@@ -1052,7 +983,10 @@ all_dat |>
   label_cutoff = 10,
   highlight_field = "High_Risk_Area_Ind",
   add_sep_lines = T
-)
+)+
+  theme(
+    text = element_text(size = 10)
+  )
 ```
 
 ## Risk of Whirling Disease - Part time Stations
@@ -1386,29 +1320,21 @@ compliance_trendline
 ## Total Inspections, Blowbys, and Compliance by Station (2026)
 
 ```{r}
-blowb = vroom::vroom("//sfp.idir.bcgov//S140//S40203//WFC AEB//General//2 SCIENCE - Invasives//AIS_R_Projects//LocalR//long_term_projects//AIS_ZQMussels//data//metabase_2026_blowbys.csv") |> 
-  purrr::set_names(snakecase::to_snake_case) |> 
+
+blowb = vroom::vroom("//sfp.idir.bcgov//S140//S40203//WFC AEB//General//2 SCIENCE - Invasives//AIS_R_Projects//LocalR//long_term_projects//AIS_ZQMussels//data//metabase_2026_blowbys.csv") |>
+  purrr::set_names(snakecase::to_snake_case) |>
   dplyr::mutate(observer_work_flow_id = as.character(observer_workflow_id))
 
-# Get station name through link with observer workflow id 
 
-# we have hte time in Vancouver time now, so lets get the names right. Drop the time column, then rename van time
-blowb = blowb |> 
-  select(-blow_by_time) |> 
-  rename(blow_by_time = blow_by_time_vancouver)
-
-
-
-blowb = blowb |> 
-  dplyr::mutate(observer_work_flow_id = as.numeric(observer_work_flow_id)) |> 
+# Attempt to get station name through workflow ID
+blowb = blowb |>
+  dplyr::mutate(observer_work_flow_id = as.numeric(observer_work_flow_id)) |>
   left_join(
-    d |> 
-      dplyr::select(Workflow_ID,
-                   Station) |> 
-      dplyr::rename(observer_work_flow_id = Workflow_ID) |> 
+    d |>
+      dplyr::select(Workflow_ID, Station) |>
+      dplyr::rename(observer_work_flow_id = Workflow_ID) |>
       dplyr::distinct()
-  ) |> 
-  dplyr::filter(!is.na(Station))
+  )
 ```
 
 ```{r}
@@ -1452,22 +1378,7 @@ compliance_dat |>
   knitr::kable()
 ```
 
-## Mussel Fouled -- Source and Destination (Placeholder Plots)
 
-```{r mf_source_and_dest}
-# pie chart 1: source provinces/states.
-
-pie_1 = make_pie(mf_dat, 'big_source_summary') +
-  labs(title = "Source Province/State")
-
-# pie chart 2: destination regions in BC.
-
-pie_2 = mf_dat |>
-  make_pie('destination_region') +
-  labs(title = 'Destination Region')
-
-ggpubr::ggarrange(pie_1, pie_2, ncol = 2, nrow = 1)
-```
 
 ## Mussels - Commercially Hauled and Days out of Water
 
@@ -1481,13 +1392,14 @@ pie_1 = mf_dat |>
   labs(title = 'Commercially Hauled')
 
 # Pie chart 2: Days out of Water
-pie_2 = mf_dat |> 
-  select(prev = previous_waterbody_1_days_out_of_water) |> 
-  mutate(prev = as.character(prev)) |> 
-  mutate(prev = replace_na(prev, 'Unknown')) |> 
-  mutate(prev = replace(prev, prev == '30 days to 6 months', '30 days to\n6 months')) |> 
-  mutate(prev = ifelse(prev == '> 1 year', 'Greater than 1 year', prev)) |> 
-  make_pie('prev') + 
+pie_2 = mf_dat |>
+  select(prev = previous_waterbody_1_days_out_of_water) |>
+  mutate(prev = as.character(prev)) |>
+  mutate(prev = replace_na(prev, 'Unknown')) |>
+  mutate(prev = str_replace_all(prev, "&gt;", ">")) |>
+  mutate(prev = replace(prev, prev == '30 days to 6 months', '30 days to\n6 months')) |>
+  mutate(prev = ifelse(prev == '> 1 year', 'Greater than 1 year', prev)) |>
+  make_pie('prev') +
   labs(title = 'Days out of Water')
 
 ggpubr::ggarrange(pie_1, pie_2, ncol = 2, nrow = 1)
@@ -1497,15 +1409,22 @@ ggpubr::ggarrange(pie_1, pie_2, ncol = 2, nrow = 1)
 ## Mussels - Intercepting Station
 
 ```{r}
-pie_3 = mf_dat |> 
-  # filter(Year == most_rec_year) |> 
-  select(station) |> 
-  dplyr::mutate(station = ifelse(
-    station == "Scheduled Inspection (CBSA notification)",
-    "Scheduled Inspection\n(CBSA notification)",
-    station)) |> 
-  ungroup() |> 
-  make_pie('station')
+pie_3 = mf_dat |>
+  select(station) |>
+  mutate(
+    station = case_when(
+      station == "Scheduled Inspection (CBSA notification)" ~
+        "Scheduled Insp.\n(CBSA)",
+
+      station == "Penticton Roving - Scheduled Inspection" ~
+        "Penticton Roving\nScheduled \nInspection",
+
+      TRUE ~ station
+    )
+  ) |>
+  ungroup() |>
+  make_pie("station")
+
 
 pie_3
 ```
@@ -1577,7 +1496,12 @@ pie_3 <- all_dat |>
   select(Station) |> 
   ungroup() |> 
   mutate(
-    Station = str_replace(Station, "Scheduled Inspection", "Sched. Insp.")
+    Station = str_replace(Station, "Scheduled Inspection", "Sched. Insp."),
+    Station = str_replace(
+    Station,
+    "Penticton Roving - Sched. Insp.",
+    "Penticton Roving\nSched. Insp."
+  ),
   ) |> 
   make_pie('Station') + 
   labs(title = "Intercepting Station")
@@ -1782,7 +1706,7 @@ cal_map = all_dat |>
 
 ```
 
-In total, there were `r nrow(Cal_d)` records of vessels from California between 2023 and 2025. Of those, there were `r nrow(cal_map)` with information about where they came from in California.
+In total, there were `r nrow(Cal_d)` records of vessels from California between 2023 and 2026. Of those, there were `r nrow(cal_map)` with information about where they came from in California.
 
 ```{r get_golden_inat_reports}
 gm_oc = rinat::get_inat_obs(taxon_name = "Limnoperna fortunei",maxresults = 10000)
@@ -1862,8 +1786,8 @@ cal_map_geo_jitter <- duplicates %>%
   )
 
 # Leaflet map
-leaflet(cal_map_geo_jitter) |> 
-  addTiles() |> 
+leaflet(cal_map_geo_jitter) |>
+  addProviderTiles(providers$Esri.WorldTopoMap) |>
   # Original red points
   addCircleMarkers(
     lng = ~jittered_lng,
@@ -2087,7 +2011,13 @@ Of these watercraft, `r wc_dp_not_rm_yearly[wc_dp_not_rm_yearly$Year == 2024, "c
 
 ###### 2025
 
-In 2025, `r wc_with_dp_yearly[wc_with_dp_yearly$Year == 2026, "count_with_dp"]` of inspected watercraft were recorded to have drainplugs (`r wc_with_dp_yearly[wc_with_dp_yearly$Year == 2026, "percent_with_dp"]` of watercraft inspections after June 18th, 2024).
+In 2025, `r wc_with_dp_yearly[wc_with_dp_yearly$Year == 2025, "count_with_dp"]` of inspected watercraft were recorded to have drainplugs (`r wc_with_dp_yearly[wc_with_dp_yearly$Year == 2025, "percent_with_dp"]` of watercraft inspections after June 18th, 2024).
+
+Of these watercraft, `r wc_dp_not_rm_yearly[wc_dp_not_rm_yearly$Year == 2025, "count"]` were compliant in having removed drainplug(s) upon arrival at station (`r wc_dp_not_rm_yearly[wc_dp_not_rm_yearly$Year == 2025, "compliance_percentage"]`).
+
+###### 2026
+
+In 2026, `r wc_with_dp_yearly[wc_with_dp_yearly$Year == 2026, "count_with_dp"]` of inspected watercraft were recorded to have drainplugs (`r wc_with_dp_yearly[wc_with_dp_yearly$Year == 2026, "percent_with_dp"]` of watercraft inspections after June 18th, 2024).
 
 Of these watercraft, `r wc_dp_not_rm_yearly[wc_dp_not_rm_yearly$Year == 2026, "count"]` were compliant in having removed drainplug(s) upon arrival at station (`r wc_dp_not_rm_yearly[wc_dp_not_rm_yearly$Year == 2026, "compliance_percentage"]`).
 
@@ -2115,7 +2045,7 @@ w_with_plugs_facet <- make_bar_with_lbls(
   x_var = "Station",
   reorder_x_by_y = TRUE,
   fill_var = "Year",
-  label_cutoff = 5,
+  label_cutoff = 25,
   highlight_field = "Drainplug_Not_Removed",  # now red = non-compliant
   ggplotify = TRUE,
   add_sep_lines = FALSE
@@ -2221,29 +2151,29 @@ blowb |>
 ## Blowby Timing - By Station
 
 ```{r}
-blowby_by_station = blowb |> 
-  filter(blow_by_time > 2024) |> 
+blowby_by_station = blowb |>
+  mutate(
+    blow_dt = lubridate::mdy_hm(blow_by_time)
+  ) |>
+  filter(lubridate::year(blow_dt) >= 2024) |>
   filter(
     !str_detect(Station, "Scheduled|Roving|Outreach")
-  ) |> 
-  dplyr::select(Station,blow_by_time) |> 
-  # dplyr::filter(!Station %in% c()) |> 
-  dplyr::filter(!stringr::str_detect(Station,'Scheduled')) |>
-  mutate(blow_by_char = as.character(blow_by_time)) |> 
-  mutate(hours = stringr::str_extract(blow_by_char,"[0-9]{1,2}:.*")) |> 
-  mutate(hours = lubridate::hms(hours)) |> 
-  dplyr::mutate(the_hour = lubridate::hour(hours)) |> 
-  dplyr::count(the_hour,Station)
+  ) |>
+  mutate(
+    the_hour = lubridate::hour(blow_dt)
+  ) |>
+  count(the_hour, Station)
 
-blowby_by_station |> 
-  ggplot() + 
-  geom_col(aes(the_hour,y=n,fill = Station)) + 
-  facet_wrap( ~ Station) + 
-  theme(legend.position = 'none') + 
-  labs(y = "Number of Blowbys",
-       x = "Hour of Day") + 
-  big_text + 
-  theme(legend.position = 'none')
+blowby_by_station |>
+  ggplot() +
+  geom_col(aes(the_hour, y = n, fill = Station)) +
+  facet_wrap(~ Station) +
+  labs(
+    y = "Number of Blowbys",
+    x = "Hour of Day"
+  ) +
+  big_text +
+  theme(legend.position = "none")
 ```
 
 ## Blow Bys Divided by Total Inspections
@@ -2337,14 +2267,14 @@ ggplotly(blowbys_by_total_insp_station_fig,
 ```{r}
 
 # non-2024 data
-cos_d = openxlsx::read.xlsx("Z:/2 SCIENCE - Invasives/SPECIES/Zebra_Quagga_Mussel/Communications/Inspection data reporting/Final report/2023/GIS Maps and Excel Figures/2023_CBSA_sorting_results_MB.xlsx",
+cos_d = openxlsx::read.xlsx("//sfp.idir.bcgov/S140/S40203/WFC AEB/General/2 SCIENCE - Invasives/SPECIES/Zebra_Quagga_Mussel/Communications/Inspection data reporting/Final report/2023/GIS Maps and Excel Figures/2023_CBSA_sorting_results_MB.xlsx",
                             sheet = "summary_figure")
 
 # 2024
-cos_24 = openxlsx::read.xlsx("Z:/2 SCIENCE - Invasives/SPECIES/Zebra_Quagga_Mussel/Communications/Inspection data reporting/Final report/2024/GIS Maps and Excel Figures/ExcelFigures/COS inbox notifications 2024.xlsx",
+cos_24 = openxlsx::read.xlsx("//sfp.idir.bcgov/S140/S40203/WFC AEB/General/2 SCIENCE - Invasives/SPECIES/Zebra_Quagga_Mussel/Communications/Inspection data reporting/Final report/2024/GIS Maps and Excel Figures/ExcelFigures/COS inbox notifications 2024.xlsx",
                             sheet = "sorted")
 
-cos_25 = openxlsx::read.xlsx("C:/Users/JPHELAN/OneDrive - Government of BC/R_projects/long_term_projects/AIS_ZQMussels/data/2025 COS inbox summary.xlsx",
+cos_25 = openxlsx::read.xlsx("//sfp.idir.bcgov/S140/S40203/WFC AEB/General/2 SCIENCE - Invasives/AIS_R_Projects/LocalR/long_term_projects/AIS_ZQMussels/data/2025 COS inbox summary.xlsx",
                             sheet = "Summary")
 names(cos_25)<-c("category", "2025")
 
