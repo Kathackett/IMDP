@@ -61,7 +61,7 @@ This R Markdown script takes the output of the script '03_ZQM_stats_and_waterbod
 
 ```{r read_in_data}
 # Read RDS.
-dat = read_rds(paste0("C:/Users/JPHELAN/Documents/mussel_model/data_for_making_shortlist.rds"))
+dat = read_rds(paste0(here::here(),"/output/data_for_making_shortlist.rds"))
 # if(interactive()){
 #   dat = read_rds('03_PrioritizationModel/data/data_for_making_shortlist.rds')
 # } else {
@@ -284,6 +284,10 @@ sample_protocol_2025 <- get_wb_list_from_protocol_doc(
   paste0(lan_root,"2 SCIENCE - Invasives/SPECIES/Zebra_Quagga_Mussel/Operations/Lake Monitoring/2025/Sampling protocol/2025 Invasive Mussel Field Protocol_V2.docx")
 )
 
+sample_protocol_2026 <- get_wb_list_from_protocol_doc(
+  paste0(lan_root,"2 SCIENCE - Invasives/SPECIES/Zebra_Quagga_Mussel/Operations/Lake Monitoring/2026/Sampling protocol/2026 Invasive Mussel Field Protocol_final.docx")
+)
+
 
 past_sample_protocols = sample_protocol_2021 |> 
   mutate(sampling_year = 2021) |> 
@@ -291,7 +295,9 @@ past_sample_protocols = sample_protocol_2021 |>
   bind_rows(sample_protocol_2023 |> mutate(Lat = as.numeric(Lat), Long = as.numeric(Long)) |> mutate(sampling_year = 2023)) |> 
   bind_rows(sample_protocol_2024 |> mutate(Lat = as.numeric(Lat), Long = as.numeric(Long)) |> mutate(sampling_year = 2024)) |> 
   bind_rows(sample_protocol_2025 |> mutate(Lat = as.numeric(Lat), Long = as.numeric(Long)) |> 
-              mutate(sampling_year = 2025))
+              mutate(sampling_year = 2025)) |> 
+  bind_rows(sample_protocol_2026 |> mutate(Lat = as.numeric(Lat), Long = as.numeric(Long)) |> 
+              mutate(sampling_year = 2026))
 
 
 

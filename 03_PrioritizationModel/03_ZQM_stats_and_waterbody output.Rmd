@@ -77,7 +77,7 @@ dams = dams |>
   st_transform(crs = 3005)
 
 # CDC listed species
-cdc_sar_sp = sf::read_sf('C:/Users/JPHELAN/OneDrive - Government of BC/R_projects/one_off_projects/AEB_species_at_risk_visualizer_2024/app/www/species_ecosystems_at_risk_publically_available_no_insects.gpkg') |>
+cdc_sar_sp = sf::read_sf('Z:/2 SCIENCE - Invasives/AIS_R_Projects/LargeDataFiles/species_ecosystems_at_risk_publically_available_no_insects.gpkg') |>
   sf::st_transform(3005)
 
 fed_sara_sp = sf::read_sf(paste0(onedrive_wd,"CNF/DFO_SARA_occ_data_QGIS_simplified.gpkg")) |> 
@@ -430,7 +430,7 @@ breaks_tbl |>
 #                                               "3 (High - greater than 20 mg/L)")))
 # 
 
-calc = read_sf(paste0(my_opts$base_dir,'01_DataCleaning/output/ZQM_RiskAssessment_ssp370_10C_threshold_pH_Adjustment_Subwatershed.gpkg')) |> 
+calc = read_sf(paste0(my_opts$base_dir,'output/ZQM_RiskAssessment_ssp370_10C_threshold_pH_Adjustment_Subwatershed.gpkg')) |> 
   # mutate(ZQ_CalcRisk = ifelse(calc_bin_n_pH_temp_adj == 99, NA, calc_bin_n_pH_temp_adj))
   mutate(ZQ_CalcRisk = ifelse(calc_bin_n_pH_temp_adj == 99, NA, calc_bin_n_pH_temp_adj))
 
@@ -1273,7 +1273,7 @@ saveRDS(
     subw_w_dat,
     breaks_tbl
   ), 
-  file = "C:/Users/JPHELAN/Documents/mussel_model/data_for_making_shortlist.rds"
+  file = paste0(here::here(),"/output/data_for_making_shortlist.rds")
 )
 ```
 
