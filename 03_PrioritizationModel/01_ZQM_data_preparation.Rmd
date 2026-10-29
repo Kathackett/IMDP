@@ -92,7 +92,7 @@ angsur = sf::read_sf(paste0(lan_root,"2 SCIENCE - Invasives/AIS_R_Projects/CMads
 # Interpolated water temperature
 wat_temp = terra::rast(paste0(onedrive_wd,"../raster/temperature_All_masked_krig.tif"))
 # Interpolated water chemistry variables
-#wat_chlor = terra::rast(paste0(onedrive_wd,"../raster/chlorophyll_All_masked_krig.tif"))
+wat_chlor = terra::rast(paste0(onedrive_wd,"../raster/chlorophyll_All_masked_krig.tif"))
 wat_dis_ox = terra::rast(paste0(onedrive_wd,"../raster/oxygen_All_masked_krig.tif"))
 wat_tot_phos = terra::rast(paste0(onedrive_wd,"../raster/phosphorus_All_masked_krig.tif"))
 #wat_pH = terra::rast(paste0(onedrive_wd,"/ph-KR-208784-median_10km_ZN.tif"))

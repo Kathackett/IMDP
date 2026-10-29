@@ -430,7 +430,7 @@ breaks_tbl |>
 #                                               "3 (High - greater than 20 mg/L)")))
 # 
 
-calc = read_sf(paste0(my_opts$base_dir,'03_b_PrioritizationModel_Golden_mussel/01_DataCleaning/output/ZQM_RiskAssessment_ssp370_15C_threshold_pH_Adjustment_Subwatershed_golden_mussel.gpkg')) |> 
+calc = read_sf(paste0(my_opts$base_dir,'01_DataCleaning/output/ZQM_RiskAssessment_ssp370_15C_threshold_pH_Adjustment_Subwatershed_golden_mussel.gpkg')) |> 
   # mutate(ZQ_CalcRisk = ifelse(calc_bin_n_pH_temp_adj == 99, NA, calc_bin_n_pH_temp_adj))
   mutate(ZQ_CalcRisk = ifelse(calc_bin_n_pH_temp_adj == 99, NA, calc_bin_n_pH_temp_adj))
 

@@ -90,18 +90,19 @@ angsur = sf::read_sf(paste0(lan_root,"2 SCIENCE - Invasives/AIS_R_Projects/CMads
 # dist_to_h = terra::rast(paste0(onedrive_wd,"distance_to_numbered_highway_raster.tif"))
 
 # Interpolated water temperature
-wat_temp = terra::rast(paste0(onedrive_wd,"../raster/Temperature_All_masked_krig.tif"))
+# Interpolated water temperature
+wat_temp = terra::rast(paste0(onedrive_wd,"../raster/temperature_All_masked_krig.tif"))
 # Interpolated water chemistry variables
-wat_chlor = terra::rast(paste0(onedrive_wd,"../raster/Chlorophyll_All_masked_krig.tif"))
-wat_dis_ox = terra::rast(paste0(onedrive_wd,"../raster/Oxygen_Dissolved_All_masked_krig.tif"))
-wat_tot_phos = terra::rast(paste0(onedrive_wd,"../raster/Phosphorus_Total_Dissolved_All_masked_krig.tif"))
+wat_chlor = terra::rast(paste0(onedrive_wd,"../raster/chlorophyll_All_masked_krig.tif"))
+wat_dis_ox = terra::rast(paste0(onedrive_wd,"../raster/oxygen_All_masked_krig.tif"))
+wat_tot_phos = terra::rast(paste0(onedrive_wd,"../raster/phosphorus_All_masked_krig.tif"))
 #wat_pH = terra::rast(paste0(onedrive_wd,"/ph-KR-208784-median_10km_ZN.tif"))
 wat_pH = terra::rast(paste0(onedrive_wd,"../raster/pH_All_masked_krig.tif"))
 # Number of waterbodies downstream of waterbody.
 # library(fwa.connect)
 # fwa_code_tbl = fwa.connect::stream_conn_tbl()
-salinity = terra::rast(paste0(onedrive_wd,"../raster/salinity_All_krig.tif"))
-calcium = terra::rast(paste0(onedrive_wd,"../raster/Calcium_Dissolved_All_krig.tif "))
+# salinity = terra::rast(paste0(onedrive_wd,"../raster/salinity_All_krig.tif"))
+# calcium = terra::rast(paste0(onedrive_wd,"../raster/Calcium_Dissolved_All_krig.tif "))
 
 # BCG waterbodies
 bcg_waterbodies = read_sf(paste0(my_opts$remote_spatial_data,"shared_data_sets/summarized_bc_waterbodies.shp"))
@@ -583,6 +584,6 @@ openxlsx::write.xlsx(column.names,
                      paste0(my_opts$base_dir,"03_PrioritizationModel/output/column_names_for_waterb_with_data_golden_mussel.xlsx"),
                      overwrite = T)
 
-sf::write_sf(waterb, paste0(my_opts$remote_spatial_data,"Projects/ZQMussels/data/waterb_with_data_golden_mussel.gpkg"))
+#sf::write_sf(waterb, paste0(my_opts$remote_spatial_data,"Projects/ZQMussels/data/waterb_with_data_golden_mussel.gpkg"))
 sf::write_sf(waterb, paste0(my_opts$base_dir,"03_PrioritizationModel/data/waterb_with_data_golden_mussel.gpkg"))
 ```
