@@ -378,8 +378,8 @@ waterb$water_chlor_interp = terra::extract(wat_chlor, terra::vect(sf::st_transfo
 waterb$water_dis_ox_interp = terra::extract(wat_dis_ox, terra::vect(sf::st_transform(waterb,4326)), fun = 'mean',na.rm=T)[,2]
 waterb$water_tot_phos_interp = terra::extract(wat_tot_phos, terra::vect(sf::st_transform(waterb,4326)), fun = 'mean',na.rm=T)[,2]
 waterb$water_pH = terra::extract(wat_pH, terra::vect(sf::st_transform(waterb,4326)), fun = 'mean',na.rm=T)[,2]
-waterb$salinity = terra::extract(salinity, terra::vect(sf::st_transform(waterb,4326)),
-                                 fun = 'mean', na.rm = T)[,2]
+# waterb$salinity = terra::extract(salinity, terra::vect(sf::st_transform(waterb,4326)),
+#                                  fun = 'mean', na.rm = T)[,2]
 waterb$calcium = terra::extract(calcium, terra::vect(sf::st_transform(waterb,4326)),
                                  fun = 'mean', na.rm = T)[,2]
 
@@ -390,7 +390,7 @@ waterb = waterb |> dplyr::mutate(water_chlor_interp = tidyr::replace_na(water_ch
 waterb = waterb |> dplyr::mutate(water_dis_ox_interp = tidyr::replace_na(water_dis_ox_interp, 0))
 waterb = waterb |> dplyr::mutate(water_tot_phos_interp = tidyr::replace_na(water_tot_phos_interp, 0))
 waterb = waterb |> dplyr::mutate(water_pH = tidyr::replace_na(water_pH, 0))
-waterb = waterb |> dplyr::mutate(salinity = tidyr::replace_na(salinity, 0))
+# waterb = waterb |> dplyr::mutate(salinity = tidyr::replace_na(salinity, 0))
 waterb = waterb |> dplyr::mutate(calcium = tidyr::replace_na(calcium,0))
 ```
 
